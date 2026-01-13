@@ -12,11 +12,11 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import itertools
 
-# ========== Step 1: 读取原始 CSV ==========
+# ========== Step 1: Load enhanced CSV ==========
 csv_path = r'C:\\Users\\Administrator\\Desktop\\enhanced-Car-Hacking.csv'
 df = pd.read_csv(csv_path, encoding='utf-8')
 
-# ========== Step 2: 把原始字段转换为数值 ==========
+# ========== Step 2: Convert raw fields to numeric ==========
 df['Timestamp'] = pd.to_numeric(df['Timestamp'], errors='coerce')
 
 for col in ['Data']:
@@ -34,8 +34,8 @@ def parse_id(x):
     return x
 df['Arbitration_ID'] = df['Arbitration_ID'].apply(parse_id)
 
-# ========== Step 3: 构造完整特征列表 ==========
-raw_cols = []   # 如果要加上原始字段，可以把上面注释去掉
+# ========== Step 3: Build full feature list ==========
+raw_cols = []   # If you want to include raw fields, remove the comments above
 ext_cols = [
     'frequency', 'data_mean', 'data_std', 'data_max', 'data_min',
     'entropy', 'is_all_zero', 'hamming_weight',
@@ -49,7 +49,7 @@ ext_cols = [
 ]
 feature_cols = raw_cols + ext_cols
 
-# ========== Step 4: 清洗 & 准备 X, y ==========
+# ========== Step 4: Clean & prepare X, y ==========
 X = (
     df[feature_cols]
       .replace([np.inf, -np.inf], np.nan)
@@ -60,7 +60,7 @@ X = (
 y = LabelEncoder().fit_transform(df['Class'].astype(str))
 class_names = LabelEncoder().fit(df['Class'].astype(str)).classes_
 
-# ========== Step 5: 划分训练/测试集 ==========
+# ========== Step 5: Train / test split ==========
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=42, stratify=y
 )
@@ -73,22 +73,22 @@ anova_df = pd.DataFrame({
     'p_value': p_values
 }).sort_values('F_value', ascending=False)
 
-print("=== ANOVA F-value 排序结果 ===")
+print("=== ANOVA F-value ranking ===")
 print(anova_df.to_string(index=False))
 
-# ========== Step 7: 用 top_k 特征训练 Random Forest ==========
+# ========== Step 7: Train Random Forest using top_k features ==========
 top_k = 40
 top_feats = anova_df['feature'].iloc[:top_k].tolist()
 
 Xtr = pd.DataFrame(X_train, columns=feature_cols)[top_feats].values
 Xte = pd.DataFrame(X_test,  columns=feature_cols)[top_feats].values
 
-# —— 改动处：使用随机森林
+# —— Modified: use Random Forest
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
 rf.fit(Xtr, y_train)
 y_pred = rf.predict(Xte)
 
-print(f"\n使用 top {top_k} 特征时，accuracy：{accuracy_score(y_test, y_pred):.4f}\n")
+print(f"\nAccuracy using top {top_k} features: {accuracy_score(y_test, y_pred):.4f}\n")
 precision = precision_score(y_test, y_pred, average='weighted')
 recall    = recall_score(y_test, y_pred, average='weighted')
 f1        = f1_score(y_test, y_pred, average='weighted')
@@ -97,10 +97,10 @@ print(f"Precision: {precision:.4f}")
 print(f"Recall:    {recall:.4f}")
 print(f"F1-Score:  {f1:.4f}")
 
-print("分类报告：")
+print("Classification report:")
 print(classification_report(y_test, y_pred, target_names=class_names))
 
-# ========== 可视化混淆矩阵 ==========
+# ========== Visualize confusion matrix ==========
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(6,6))
 plt.imshow(cm, cmap='Blues', interpolation='nearest')
@@ -118,6 +118,7 @@ for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
              color="white" if cm[i, j] > thresh else "black")
 plt.tight_layout()
 plt.show()
+
 
 '''
 
@@ -133,11 +134,11 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import itertools
 
-# 1. 读取数据
+# 1. Load raw data
 csv_path = r"C:\\Users\\Administrator\\Desktop\\Car-Hacking.csv"
 df = pd.read_csv(csv_path)
 
-# 2. 解析 Arbitration_ID（十六进制或浮点数）
+# 2. Parse Arbitration_ID (hexadecimal or float)
 def parse_id(x):
     if isinstance(x, str):
         try:
@@ -151,37 +152,37 @@ def parse_id(x):
 
 df['Arbitration_ID'] = df['Arbitration_ID'].apply(parse_id)
 
-# 3. 拆分 DATA 字段到 Data0–Data7（不足补 0）
+# 3. Split DATA field into Data0–Data7 (pad with zeros if missing)
 for i in range(8):
     df[f'Data{i}'] = (
         df['Data'].fillna('').astype(str).str.split().str[i]
         .apply(lambda x: int(x, 16) if isinstance(x, str) and x else 0)
     )
 
-# 4. 准备特征列
+# 4. Prepare feature columns
 feature_cols = ['Arbitration_ID'] + [f'Data{i}' for i in range(8)]
 
 df.drop(columns=['DLC'], errors='ignore', inplace=True)
 
 X = df[feature_cols].astype(np.float32).values
 
-# 5. 准备标签
+# 5. Prepare labels
 le = LabelEncoder()
 y = le.fit_transform(df['Class'].astype(str))
 class_names = le.classes_
 
-# 6. 划分训练/测试集
+# 6. Train / test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3,
     stratify=y, random_state=42
 )
 
-# 7. 特征归一化
+# 7. Feature normalization
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test  = scaler.transform(X_test)
 
-# 8. 训练随机森林
+# 8. Train Random Forest
 rf = RandomForestClassifier(
     n_estimators=10,
     max_depth=None,
@@ -190,10 +191,10 @@ rf = RandomForestClassifier(
 )
 rf.fit(X_train, y_train)
 
-# 9. 预测
+# 9. Predict
 y_pred = rf.predict(X_test)
 
-# 10. 输出准确率
+# 10. Output accuracy
 acc = accuracy_score(y_test, y_pred)
 print(f"Random Forest Test Accuracy: {acc:.4f}\n")
 
@@ -205,7 +206,7 @@ print(f"Precision: {precision:.4f}")
 print(f"Recall:    {recall:.4f}")
 print(f"F1-Score:  {f1:.4f}")
 
-# 11. 混淆矩阵
+# 11. Confusion matrix
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(6,6))
 plt.imshow(cm, cmap='Blues', interpolation='nearest')
@@ -224,11 +225,11 @@ for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
 plt.tight_layout()
 plt.show()
 
-# 12. 分类报告
+# 12. Classification report
 print("Classification Report:")
 print(classification_report(y_test, y_pred, target_names=class_names))
 
-# 13. 多类 ROC 曲线
+# 13. Multi-class ROC curves
 y_true_bin  = label_binarize(y_test,  classes=range(len(class_names)))
 y_score_bin = label_binarize(y_pred, classes=range(len(class_names)))
 if y_true_bin.shape[1] > 1:
