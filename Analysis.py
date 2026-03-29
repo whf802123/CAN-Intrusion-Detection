@@ -48,7 +48,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-
 # ========== 5. Train a baseline RandomForest ==========
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
 rf.fit(X_train, y_train)
@@ -56,10 +55,9 @@ rf.fit(X_train, y_train)
 rf.feature_names_in_ = np.array(ext_cols)
 
 
-# ========== 3. ANOVA F-test 可视化 ==========
+# ========== 3. ANOVA F-test ==========
 F_values, p_values = f_classif(X_train, y_train)
 
-# 按 F 值降序排序
 indices = np.argsort(F_values)
 
 plt.figure(figsize=(10, 8))
