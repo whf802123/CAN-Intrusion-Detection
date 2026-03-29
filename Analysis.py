@@ -167,7 +167,6 @@ batches = np.array_split(X_sub, 5)
 shap_list = []
 
 for batch in tqdm(batches, desc="SHAP", unit="batch"):
-    # 返回 [shap_class0, shap_class1], 每个 shape=(batch_size, n_features)
     sv = explainer.shap_values(batch)
     shap_list.append(sv[1]) 
 
