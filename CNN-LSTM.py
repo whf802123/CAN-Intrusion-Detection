@@ -1,13 +1,12 @@
+
 '''
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
 import re
 import numpy as np
 import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score, confusion_matrix, classification_report,
@@ -17,7 +16,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, LSTM, Dense, Dropout
 from tensorflow.keras.utils import to_categorical
 
-# 1. Utility to parse a CAN‑MIRGU log into a DataFrame, tagging with label
 def parse_log(file_path: str, label: int, max_bytes: int = 8) -> pd.DataFrame:
     pattern = re.compile(
         r'\('
@@ -44,36 +42,33 @@ def parse_log(file_path: str, label: int, max_bytes: int = 8) -> pd.DataFrame:
             records.append(rec)
     return pd.DataFrame(records)
 
-# 2. Paths to your log files
-base = r"C:\\Users\\whf80\\Desktop\\Car-Dataset\\CAN-MIRGU-main"
+base = r"E:\B\1\data\Car-Dataset\CAN-MIRGU-main\\CAN-MIRGU.csv"
+
 df_benign  = parse_log(f"{base}\\Benign_day1_file1.log",  label=0)
 df_masq    = parse_log(f"{base}\\masquerade_attack.log", label=1)
 df_real    = parse_log(f"{base}\\real_attacks.log",     label=1)
 df_suspend = parse_log(f"{base}\\suspension_attack.log", label=1)
 
-# 3. Combine all into one DataFrame
 df = pd.concat([df_benign, df_masq, df_real, df_suspend], ignore_index=True)
 
-# 4. Prepare features & labels
+# Features 
 feature_cols = [f"Data{i}" for i in range(8)]
 X = df[feature_cols].values.astype(np.float32)
 y = df["label"].values
 
-# 5. Train/test split
+# Split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=42, stratify=y
 )
 
-# 6. Reshape for CNN-LSTM: (samples, timesteps, channels=1)
 X_train = X_train.reshape((-1, X_train.shape[1], 1))
 X_test  = X_test.reshape((-1, X_test.shape[1], 1))
 
-# 7. One-hot encode labels
 num_classes = len(np.unique(y))
 y_train_cat = to_categorical(y_train, num_classes)
 y_test_cat  = to_categorical(y_test,  num_classes)
 
-# 8. Build CNN-LSTM model
+# CNN-LSTM model
 model = Sequential([
     Conv1D(64, kernel_size=3, activation='relu', input_shape=(X_train.shape[1], 1)),
     MaxPooling1D(pool_size=2),
@@ -90,22 +85,22 @@ model.compile(
 )
 model.summary()
 
-# 9. Train
+# Train
 history = model.fit(
     X_train, y_train_cat,
-    epochs=20,
+    epochs=10,
     batch_size=64,
     validation_split=0.1
 )
 
-# 10. Evaluate on test set
+# Evaluation
 y_pred_prob = model.predict(X_test)
 y_pred = np.argmax(y_pred_prob, axis=1)
 
 acc = accuracy_score(y_test, y_pred)
 print(f"\nTest Accuracy: {acc:.4f}")
 
-# 11. Confusion Matrix
+# Confusion Matrix
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(6,6))
 plt.imshow(cm, cmap='Blues', interpolation='nearest')
@@ -123,11 +118,11 @@ for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
 plt.tight_layout()
 plt.show()
 
-# 12. Classification Report
+# Classification Report
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred))
 
-# 13. ROC Curves (One-vs-Rest)
+# ROC Curves 
 plt.figure(figsize=(8,6))
 for i in range(num_classes):
     fpr, tpr, _ = roc_curve(y_test_cat[:, i], y_pred_prob[:, i])
@@ -155,8 +150,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
-# Load data 
-csv_path = r'C:\Users\whf80\Desktop\Car-Dataset\CAN-MIRGU-main\enhancement-CAN-MIRGU.csv'
+# Load data
+csv_path = r'E:\B\1\data\Car-Dataset\CAN-MIRGU-main\\enhancement-CAN-MIRGU.csv'
 df = pd.read_csv(csv_path, encoding='utf-8')
 
 df['Timestamp'] = pd.to_numeric(df['Timestamp'], errors='coerce')
@@ -218,7 +213,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 X_train_seq = X_train.reshape((X_train.shape[0], top_k, 1))
 X_test_seq  = X_test.reshape((X_test.shape[0],  top_k, 1))
 
-# CNN-LSTM 
+# CNN-LSTM
 model = Sequential([
     Conv1D(filters=64, kernel_size=3, activation='relu',
            input_shape=(top_k,1), padding='same'),
@@ -237,23 +232,23 @@ model.compile(
 
 model.summary()
 
-# Train 
+# Train
 es = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
 history = model.fit(
     X_train_seq, y_train,
     validation_split=0.1,
-    epochs=50,
+    epochs=10,
     batch_size=32,
     callbacks=[es],
     verbose=2
 )
 
-# Evaluation 
+# Evaluation
 loss, acc = model.evaluate(X_test_seq, y_test, verbose=0)
 print(f"\nTest Accuracy: {acc:.4f}\n")
 
-# Confusion Matrix 
+# Confusion Matrix
 y_pred = np.argmax(model.predict(X_test_seq), axis=1)
 cm = confusion_matrix(y_test, y_pred)
 
@@ -276,7 +271,7 @@ plt.show()
 print("Classification Report:")
 print(classification_report(y_test, y_pred, target_names=class_names))
 
-# ROC Curve 
+# ROC Curve
 y_true_bin  = tf.keras.utils.to_categorical(y_test, num_classes=len(class_names))
 y_score_bin = model.predict(X_test_seq)
 if y_true_bin.shape[1] > 1:
