@@ -13,11 +13,11 @@ from collections import defaultdict
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-# ========== 1. Load and prepare data ==========
+# Load data 
 csv_path = r'C:\\Users\\whf80\\Desktop\\Car-Dataset\\CAN-MIRGU-main\\enhancement-CAN-MIRGU.csv'
 df = pd.read_csv(csv_path, encoding='utf-8')
 
-# ========== 2. Define extended feature list ==========
+# Define the enhanced feature list 
 ext_cols = [
     'frequency', 'data_mean', 'data_std', 'data_max', 'data_min',
     'entropy', 'hamming_weight',
@@ -29,7 +29,6 @@ ext_cols = [
     'byte_6_mean', 'byte_6_std', 'byte_7_mean', 'byte_7_std'
 ]
 
-# ========== 3. Build X and y ==========
 X = (df[ext_cols]
        .replace([np.inf, -np.inf], np.nan)
        .fillna(0)
@@ -40,7 +39,7 @@ le = LabelEncoder()
 y = le.fit_transform(df['Class'].astype(str))
 class_names = le.classes_
 
-# ========== 4. Split train/test ==========
+# Split 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y,
     test_size=0.3,
@@ -48,14 +47,12 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-# ========== 5. Train a baseline RandomForest ==========
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
 rf.fit(X_train, y_train)
 # inject feature names so PDP/ICE won't warn
 rf.feature_names_in_ = np.array(ext_cols)
 
-
-# ========== 3. ANOVA F-test ==========
+# ANOVA F-test 
 F_values, p_values = f_classif(X_train, y_train)
 
 indices = np.argsort(F_values)
@@ -69,7 +66,7 @@ plt.xlabel('F-value')
 plt.tight_layout()
 plt.show()
 
-# ========== 6. Permutation Importance ==========
+# Permutation Importance 
 result = permutation_importance(
     rf, X_test, y_test,
     n_repeats=10,
@@ -101,7 +98,6 @@ plt.gca().invert_yaxis()
 plt.tight_layout()
 plt.show()
 
-
 lime_explainer = LimeTabularExplainer(
     training_data        = X_train,
     feature_names        = ext_cols,
@@ -110,7 +106,7 @@ lime_explainer = LimeTabularExplainer(
     discretize_continuous= True
 )
 
-# ========== 4. LIME Weight ==========
+# LIME Weight 
 n_total = len(X_test)
 n_sample = max(1, int(0.05 * n_total))           
 rng = np.random.RandomState(42)                 
@@ -146,7 +142,6 @@ plt.tight_layout()
 plt.show()
 
 
-
 '''
 n_total = X_test.shape[0]
 n_sample = max(1, int(0.00001 * n_total))
@@ -154,7 +149,7 @@ rng = np.random.RandomState(42)
 idxs = rng.choice(n_total, size=n_sample, replace=False)
 X_sub = X_test[idxs]
 
-# 2. TreeExplainer 
+# TreeExplainer 
 explainer = shap.TreeExplainer(
     rf,
     data=X_train,
@@ -162,7 +157,7 @@ explainer = shap.TreeExplainer(
     model_output="probability"
 )
 
-# 3. SHAP
+# SHAP
 batches = np.array_split(X_sub, 5)
 shap_list = []
 
@@ -170,11 +165,11 @@ for batch in tqdm(batches, desc="SHAP", unit="batch"):
     sv = explainer.shap_values(batch)
     shap_list.append(sv[1]) 
 
-# 4. Average SHAP
+# Average SHAP
 shap_all  = np.vstack(shap_list)                # shape=(n_sample, n_features)
 mean_shap = np.mean(np.abs(shap_all), axis=0)   # shape=(n_features,)
 
-# 5. Visualization
+# Visualization
 order        = np.argsort(mean_shap)[::-1]
 sorted_feats = [ext_cols[i] for i in order]
 sorted_vals  = mean_shap[order]
