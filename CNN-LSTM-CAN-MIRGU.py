@@ -88,7 +88,7 @@ model.summary()
 # Train
 history = model.fit(
     X_train, y_train_cat,
-    epochs=10,
+    epochs=1,
     batch_size=64,
     validation_split=0.1
 )
@@ -238,7 +238,7 @@ es = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 history = model.fit(
     X_train_seq, y_train,
     validation_split=0.1,
-    epochs=10,
+    epochs=1,
     batch_size=32,
     callbacks=[es],
     verbose=2
