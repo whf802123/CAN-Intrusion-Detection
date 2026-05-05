@@ -173,11 +173,11 @@ from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import EarlyStopping
 
-# ========== Step 1: Load data ==========
+# Load data 
 csv_path = r"C:\\Users\\whf80\\Desktop\\Car-Dataset\\CAN-MIRGU-main\\CAN-MIRGU.csv"
 df = pd.read_csv(csv_path)
 
-# ========== Step 2: Parse Arbitration_ID ==========
+# Parse Arbitration_ID 
 def parse_id(x):
     if isinstance(x, str):
         try:   return int(x, 16)
@@ -204,40 +204,33 @@ def parse_data_bytes(data_str, idx):
 for i in range(8):
     df[f'Data{i}'] = df['DATA'].apply(lambda x: parse_data_bytes(x, i)).astype(np.int32)
 
-# ========== Step 4: Prepare feature matrix ==========
 feature_cols = ['Arbitration_ID']
 if 'DLC' in df.columns:
     feature_cols.append('DLC')
 feature_cols += [f'Data{i}' for i in range(8)]
-
 X = df[feature_cols].astype(np.float32).values
-
-# ========== Step 5: Encode labels ==========
 le = LabelEncoder()
 y = le.fit_transform(df['Class'].astype(str))
 class_names = le.classes_
 
-# ========== Step 6: Train/test split ==========
+# Train/test split 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, stratify=y, random_state=42
 )
 
-# ========== Step 7: Scale features ==========
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled  = scaler.transform(X_test)
 
-# ========== Step 8: Reshape for LSTM ==========
 n_feats = X_train_scaled.shape[1]
 X_train_lstm = X_train_scaled.reshape((X_train_scaled.shape[0], 1, n_feats))
 X_test_lstm  = X_test_scaled.reshape((X_test_scaled.shape[0], 1, n_feats))
 
-# ========== Step 9: One-hot encode labels ==========
 n_classes    = len(class_names)
 y_train_cat  = to_categorical(y_train, num_classes=n_classes)
 y_test_cat   = to_categorical(y_test,  num_classes=n_classes)
 
-# ========== Step 10: Build and train LSTM ==========
+# Build and train LSTM 
 model = Sequential([
     Input(shape=(1, n_feats)),
     LSTM(32),
@@ -246,15 +239,12 @@ model = Sequential([
     Dropout(0.5),
     Dense(n_classes, activation='softmax')
 ])
-
 model.compile(
     loss='categorical_crossentropy',
     optimizer='adam',
     metrics=['accuracy']
 )
-
 es = EarlyStopping(monitor='val_accuracy', patience=5, restore_best_weights=True)
-
 history = model.fit(
     X_train_lstm, y_train_cat,
     validation_split=0.2,
@@ -264,7 +254,7 @@ history = model.fit(
     verbose=2
 )
 
-# ========== Step 11: Evaluate on test set ==========
+# Evaluation
 y_prob = model.predict(X_test_lstm)
 y_pred = np.argmax(y_prob, axis=1)
 
@@ -278,11 +268,11 @@ print(f"Precision: {prec:.4f}")
 print(f"Recall:    {rec:.4f}")
 print(f"F1-Score:  {f1:.4f}\n")
 
-# ========== Step 12: Classification report ==========
+# Classification report 
 print("Classification Report:")
 print(classification_report(y_test, y_pred, target_names=class_names))
 
-# ========== Step 13: Confusion matrix ==========
+# Confusion matrix 
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(6,6))
 plt.imshow(cm, cmap='Blues', interpolation='nearest')
@@ -300,7 +290,7 @@ for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
 plt.tight_layout()
 plt.show()
 
-# ========== Step 14: ROC curves ==========
+# ROC curves 
 y_true_bin  = label_binarize(y_test,  classes=range(n_classes))
 y_score_bin = y_prob
 if n_classes > 1:
