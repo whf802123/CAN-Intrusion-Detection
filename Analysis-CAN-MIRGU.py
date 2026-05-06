@@ -141,8 +141,6 @@ plt.xlabel('LIME weight')
 plt.tight_layout()
 plt.show()
 
-
-'''
 n_total = X_test.shape[0]
 n_sample = max(1, int(0.00001 * n_total))
 rng = np.random.RandomState(42)
@@ -182,4 +180,3 @@ plt.gca().invert_yaxis()
 plt.xlabel('SHAP Weight')
 plt.tight_layout()
 plt.show()
-'''
